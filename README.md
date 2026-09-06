@@ -18,14 +18,18 @@ Copy `clog.h` into your project and include it:
 
 ## API 
 
+| Macro | Description |
+|---|---|
+| `CLOG_TRACE(fmt, ...)` | Log a trace message |
+| `CLOG_DEBUG(fmt, ...)` | Log a debug message |
+| `CLOG_INFO(fmt, ...)` | Log an info message |
+| `CLOG_WARN(fmt, ...)` | Log a warning message |
+| `CLOG_ERROR(fmt, ...)` | Log an error message |
+| `CLOG_FATAL(fmt, ...)` | Log a fatal message |
+
 | Function | Description |
 |---|---|
-| `clog_trace(fmt, ...)` | Log a trace message |
-| `clog_debug(fmt, ...)` | Log a debug message |
-| `clog_info(fmt, ...)` | Log an info message |
-| `clog_warn(fmt, ...)` | Log a warning message |
-| `clog_error(fmt, ...)` | Log an error message |
-| `clog_fatal(fmt, ...)` | Log a fatal message |
+| `clog_set_output(FILE* out)` | Redirect all log output to a custom stream (defaults to ` stdout` / `stderr` depending on level) |
 
 ## Usage
 
@@ -33,14 +37,19 @@ Copy `clog.h` into your project and include it:
 #include "clog.h"
 
 int main(void) {
-    clog_info("hello, world!");
-    
-    int x = 5;
-    clog_warn("x = %d", 5);
-    
+    CLOG_FATAL("main", "Oops, something went wrong!");
+    CLOG_ERROR("main", "Unexpected error");
+    CLOG_WARN("main", "This function is deprecated");
+    CLOG_INFO("main", "Server started on port %s", "8080");
+    CLOG_DEBUG("main", "WiFi status = %d", 1);
+    CLOG_TRACE("main", "This is a trace");
     return 0;
 }
 ```
+
+## Example
+
+![alt Example of clog output on my terminal](assets/clog_output.png)
 
 ## Licence
 
