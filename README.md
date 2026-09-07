@@ -36,13 +36,15 @@ Copy `clog.h` into your project and include it:
 ```c
 #include "clog.h"
 
+#define TAG "main"
+
 int main(void) {
-    CLOG_FATAL("main", "Oops, something went wrong!");
-    CLOG_ERROR("main", "Unexpected error");
-    CLOG_WARN("main", "This function is deprecated");
-    CLOG_INFO("main", "Server started on port %s", "8080");
-    CLOG_DEBUG("main", "WiFi status = %d", 1);
-    CLOG_TRACE("main", "This is a trace");
+    CLOG_FATAL(TAG, "Oops, something went wrong!");
+    CLOG_ERROR(TAG, "Unexpected error");
+    CLOG_WARN(TAG, "This function is deprecated");
+    CLOG_INFO(TAG, "Server started on port %s", "8080");
+    CLOG_DEBUG(TAG, "WiFi status = %d", 1);
+    CLOG_TRACE(TAG, "This is a trace");
     return 0;
 }
 ```

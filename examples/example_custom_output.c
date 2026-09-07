@@ -1,8 +1,17 @@
 #include "clog.h"
 
 #define TAG "main"
+#define OUTPUT_LOG_FILE "logs.log"
 
 int main(void) {
+    FILE* f = fopen(OUTPUT_LOG_FILE, "a");
+
+    if (f == NULL) {
+        return 1;
+    }
+
+    clog_set_output(f);
+
     CLOG_FATAL(TAG, "Oops, something went wrong!");
     CLOG_ERROR(TAG, "Unexpected error");
     CLOG_WARN(TAG, "This function is deprecated");
