@@ -48,8 +48,8 @@ static const char *clog_level_str(enum clog_level level) {
     }
 }
 
-static const char *clog_text_color(enum clog_level level, int use_color) {
 #ifdef CLOG_ANSI_COLOR
+static const char *clog_text_color(enum clog_level level, int use_color) {
     if (!use_color) return "";
     switch (level) {
         case CLOG_LEVEL_ERROR: return "\033[0;31m";
@@ -57,31 +57,21 @@ static const char *clog_text_color(enum clog_level level, int use_color) {
         case CLOG_LEVEL_DEBUG: return "\033[0;36m";
         default:               return "";
     }
-#else
-    return "";
-#endif
 }
 
 static const char *clog_bg_color(enum clog_level level, int use_color) {
-#ifdef CLOG_ANSI_COLOR
     if (!use_color) return "";
     switch (level) {
         case CLOG_LEVEL_FATAL: return "\033[41m";
         default:               return "";
     }
-#else
-    return "";
-#endif
 }
 
 static const char* clog_reset_color(int use_color) {
-#ifdef CLOG_ANSI_COLOR
     if (!use_color) return "";
     return "\033[0m";
-#else
-    return "";
-#endif
 }
+#endif
 
 static int clog_hydrate_buffer(
     char *buffer,
@@ -116,7 +106,12 @@ static int clog_hydrate_buffer(
     if (n2 < 0) { return -1; }
     pos = ((pos + n2) < buffer_size) ? pos + n2 : buffer_size - 1;
 
+#ifdef CLOG_ANSI_COLOR
     int n3 = snprintf(buffer + pos, buffer_size - pos, "%s\n", clog_reset_color(use_color));
+#else
+    (void)use_color;
+    int n3 = snprintf(buffer + pos, buffer_size - pos, "\n");
+#endif
     if (n3 < 0) { return -1; }
     pos = ((pos + n3) < buffer_size) ? pos + n3 : buffer_size - 1;
 
@@ -137,13 +132,16 @@ void clog_log(enum clog_level level, const char* file, int line, const char* tag
         use_color_cache = (fd != -1) && isatty(fd);
     }
     int use_color = use_color_cache;
+    
+    const char *text_color = clog_text_color(level, use_color);
+    const char *bg_color = clog_bg_color(level, use_color);
 #else
     int use_color = 0;
+    const char *text_color = "";
+    const char *bg_color = "";
 #endif
 
     const char *level_str = clog_level_str(level);
-    const char *text_color = clog_text_color(level, use_color);
-    const char *bg_color = clog_bg_color(level, use_color);
 
     char buffer[CLOG_INTERNAL_BUFFER_SIZE];
 
