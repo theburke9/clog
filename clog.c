@@ -22,12 +22,15 @@
 
 #include "clog.h"
 
+#include <stdarg.h>
+#include <unistd.h>
+#include <time.h>
+
+#define CLOG_INTERNAL_BUFFER_SIZE 8192
+
 FILE* clog_output_file = NULL;
 
-void clog_set_output(FILE* out) {
-    if (out == NULL) return;
-    clog_output_file = out;
-}
+static int use_color_cache = -1;
 
 static FILE* clog_get_output(enum clog_level level) {
     return clog_output_file ? clog_output_file : (level < CLOG_LEVEL_WARN ? stderr : stdout);
@@ -80,15 +83,60 @@ static const char* clog_reset_color(int use_color) {
 #endif
 }
 
+static int clog_hydrate_buffer(
+    char *buffer,
+    size_t buffer_size,
+    const char *bg_color,
+    const char *text_color,
+    const struct tm *tm_info,
+    const char *level_str,
+    const char *tag,
+    const char *file,
+    int line,
+    const char *fmt,
+    va_list args,
+    int use_color
+) {
+    if (buffer_size == 0) return -1;
+    buffer[0] = '\0';
+
+    int n1 = snprintf(
+        buffer, buffer_size - 1,
+        "%s%s%04d/%02d/%02d %02d:%02d:%02d %s (%s) %s:%d ->  ",
+        bg_color, text_color,
+        tm_info->tm_year+1900, tm_info->tm_mon+1, 
+        tm_info->tm_mday, tm_info->tm_hour, 
+        tm_info->tm_min, tm_info->tm_sec, 
+        level_str, tag, file, line);
+
+    if (n1 < 0) { return -1; }
+    size_t pos = ((size_t)n1 < buffer_size) ? (size_t)n1 : buffer_size - 1;
+    
+    int n2 = vsnprintf(buffer + pos, buffer_size - pos, fmt, args);
+    if (n2 < 0) { return -1; }
+    pos = ((pos + n2) < buffer_size) ? pos + n2 : buffer_size - 1;
+
+    int n3 = snprintf(buffer + pos, buffer_size - pos, "%s\n", clog_reset_color(use_color));
+    if (n3 < 0) { return -1; }
+    pos = ((pos + n3) < buffer_size) ? pos + n3 : buffer_size - 1;
+
+    buffer[buffer_size - 1] = '\0';
+    return pos;
+}
+
 void clog_log(enum clog_level level, const char* file, int line, const char* tag, const char *fmt, ...) {
-    time_t timestamp = time(NULL);
-    struct tm * time_infos = localtime(&timestamp);
+    time_t now = time(NULL);
+    struct tm tm_info;
+    localtime_r(&now, &tm_info);
 
     FILE* out = clog_get_output(level);
 
 #ifdef CLOG_ANSI_COLOR
     int fd = fileno(out);
-    int use_color = (fd != -1) && isatty(fd);
+    if (use_color_cache == -1) {
+        use_color_cache = (fd != -1) && isatty(fd);
+    }
+    int use_color = use_color_cache;
 #else
     int use_color = 0;
 #endif
@@ -96,28 +144,38 @@ void clog_log(enum clog_level level, const char* file, int line, const char* tag
     const char *level_str = clog_level_str(level);
     const char *text_color = clog_text_color(level, use_color);
     const char *bg_color = clog_bg_color(level, use_color);
-    
-    fprintf(
-        out,
-        "%s%s%04d/%02d/%02d %02d:%02d:%02d %s (%s) %s:%d -> ",
-        bg_color,
-        text_color,
-        time_infos->tm_year+1900, 
-        time_infos->tm_mon+1, 
-        time_infos->tm_mday, 
-        time_infos->tm_hour, 
-        time_infos->tm_min, 
-        time_infos->tm_sec, 
-        level_str, 
-        tag, 
-        file, 
-        line
-    );
+
+    char buffer[CLOG_INTERNAL_BUFFER_SIZE];
 
     va_list args;
     va_start(args, fmt);
-    vfprintf(out, fmt, args);
+    int status = clog_hydrate_buffer(
+        buffer,
+        CLOG_INTERNAL_BUFFER_SIZE,
+        bg_color,
+        text_color,
+        &tm_info,
+        level_str,
+        tag,
+        file,
+        line,
+        fmt,
+        args,
+        use_color
+    );
     va_end(args);
 
-    fprintf(out, "%s\n", clog_reset_color(use_color));
+    if (status > 0) {
+        fwrite(buffer, sizeof(char), status, out);
+    }
+
+    if (level >= CLOG_LEVEL_ERROR) {
+        fflush(out);
+    } 
+}
+
+void clog_set_output(FILE* out) {
+    if (out == NULL) return;
+    clog_output_file = out;
+    use_color_cache = -1;
 }

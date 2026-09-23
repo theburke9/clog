@@ -24,9 +24,6 @@
 #define CLOG_H
 
 #include <stdio.h>
-#include <stdarg.h>
-#include <unistd.h>
-#include <time.h>
 
 #define CLOG_VERSION "1.0.0"
 
